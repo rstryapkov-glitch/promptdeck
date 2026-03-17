@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeckForge — Создай презентацию</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Onest:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08080f;
+  --card: #111119;
+  --border: #1d1d2d;
+  --text: #e6e6f0;
+  --muted: #606078;
+  --accent: #6366f1;
+  --accent2: #f43f8e;
+  --green: #10b981;
+  --red: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Onest',sans-serif; min-height:100vh; }
+
+/* ── Header ── */
+.header { padding:32px 48px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+.logo { font-family:'Unbounded',sans-serif; font-size:14px; font-weight:800; letter-spacing:.15em; color:var(--accent); }
+.logo span { color:var(--accent2); }
+
+/* ── Layout ── */
+.app { display:grid; grid-template-columns:380px 1fr; min-height:calc(100vh - 81px); }
+.sidebar { border-right:1px solid var(--border); padding:32px; overflow-y:auto; }
+.main { padding:40px; display:flex; flex-direction:column; }
+
+/* ── Form ── */
+.form-section { margin-bottom:28px; }
+.form-label { font-family:'Unbounded',sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; margin-bottom:10px; display:block; }
+.form-input, .form-textarea, .form-select {
+  width:100%; background:var(--card); border:1.5px solid var(--border);
+  border-radius:10px; padding:11px 14px; color:var(--text);
+  font-family:'Onest',sans-serif; font-size:14px; outline:none;
+  transition:border-color .2s;
+}
+.form-input:focus, .form-textarea:focus, .form-select:focus { border-color:var(--accent); }
+.form-input::placeholder, .form-textarea::placeholder { color:var(--muted); }
+.form-textarea { resize:vertical; min-height:110px; line-height:1.6; }
+.form-select { cursor:pointer; }
+.form-select option { background:#1a1a2e; }
+
+/* ── Palette chips ── */
+.palette-row { display:flex; flex-wrap:wrap; gap:8px; }
+.palette-chip {
+  border:1.5px solid var(--border); border-radius:10px; cursor:pointer;
+  overflow:hidden; width:52px; height:36px; transition:transform .15s, border-color .2s;
+  display:flex; flex-direction:row;
+}
+.palette-chip:hover { transform:scale(1.08); }
+.palette-chip.active { border-color:var(--accent); box-shadow:0 0 0 2px rgba(99,102,241,.3); }
+.palette-chip div { flex:1; }
+
+/* ── Font chips ── */
+.font-row { display:flex; flex-wrap:wrap; gap:8px; }
+.font-chip {
+  border:1.5px solid var(--border); border-radius:9px; cursor:pointer;
+  padding:7px 12px; font-size:13px; color:var(--text);
+  background:var(--card); transition:border-color .2s, background .2s;
+  white-space:nowrap;
+}
+.font-chip:hover { border-color:var(--accent); }
+.font-chip.active { border-color:var(--accent); background:rgba(99,102,241,.1); }
+
+/* ── Style chips ── */
+.style-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.style-chip {
+  border:1.5px solid var(--border); border-radius:10px; cursor:pointer;
+  padding:10px 12px; background:var(--card); transition:border-color .2s, background .2s;
+}
+.style-chip:hover { border-color:var(--accent); }
+.style-chip.active { border-color:var(--accent); background:rgba(99,102,241,.1); }
+.style-chip-title { font-family:'Unbounded',sans-serif; font-size:11px; font-weight:600; }
+.style-chip-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ── Generate button ── */
+.gen-btn {
+  width:100%; padding:15px; border-radius:12px; border:none;
+  background:linear-gradient(135deg,var(--accent),#8b5cf6);
+  color:#fff; font-family:'Unbounded',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:opacity .2s, transform .15s; letter-spacing:.04em;
+  margin-top:8px;
+}
+.gen-btn:hover { opacity:.88; transform:translateY(-1px); }
+.gen-btn:disabled { opacity:.3; cursor:not-allowed; transform:none; }
+
+/* ── Main area states ── */
+.state-idle, .state-loading, .state-done, .state-error { display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center; }
+.state-idle { display:flex; }
+.idle-icon { font-size:64px; margin-bottom:20px; opacity:.3; }
+.idle-title { font-family:'Unbounded',sans-serif; font-size:22px; font-weight:700; opacity:.25; }
+.idle-sub { font-size:14px; color:var(--muted); margin-top:10px; opacity:.6; }
+
+/* ── Loading ── */
+.spinner { width:48px; height:48px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:24px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-title { font-family:'Unbounded',sans-serif; font-size:18px; font-weight:700; margin-bottom:10px; }
+.loading-sub { font-size:14px; color:var(--muted); }
+.loading-steps { margin-top:28px; display:flex; flex-direction:column; gap:10px; text-align:left; }
+.lstep { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); }
+.lstep.done { color:var(--green); }
+.lstep.active { color:var(--text); }
+.lstep-icon { width:20px; height:20px; border-radius:50%; border:1.5px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+.lstep.done .lstep-icon { background:var(--green); border-color:var(--green); color:#fff; }
+.lstep.active .lstep-icon { border-color:var(--accent); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Done ── */
+.done-icon { font-size:64px; margin-bottom:20px; }
+.done-title { font-family:'Unbounded',sans-serif; font-size:24px; font-weight:800; margin-bottom:10px; }
+.done-sub { font-size:14px; color:var(--muted); margin-bottom:32px; }
+.download-btn {
+  padding:16px 40px; border-radius:12px; border:none;
+  background:linear-gradient(135deg,var(--green),#059669);
+  color:#fff; font-family:'Unbounded',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:opacity .2s, transform .15s; letter-spacing:.04em;
+}
+.download-btn:hover { opacity:.88; transform:translateY(-1px); }
+.again-btn {
+  margin-top:14px; padding:11px 28px; border-radius:10px; border:1.5px solid var(--border);
+  background:transparent; color:var(--muted); font-family:'Unbounded',sans-serif;
+  font-size:11px; font-weight:600; cursor:pointer; transition:all .2s;
+}
+.again-btn:hover { border-color:var(--muted); color:var(--text); }
+
+/* ── Error ── */
+.error-icon { font-size:48px; margin-bottom:16px; }
+.error-msg { font-size:14px; color:var(--muted); max-width:420px; line-height:1.6; }
+
+/* ── Slide preview ── */
+.preview-grid { display:flex; flex-direction:column; gap:12px; width:100%; max-width:700px; margin-top:20px; }
+.slide-preview {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px; text-align:left;
+}
+.sp-num { font-size:10px; color:var(--muted); font-family:'Unbounded',sans-serif; margin-bottom:4px; letter-spacing:.1em; }
+.sp-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+.sp-content { font-size:12px; color:var(--muted); line-height:1.5; }
+
+.divider { height:1px; background:var(--border); margin:20px 0; }
+
+@media(max-width:900px){
+  .app { grid-template-columns:1fr; }
+  .sidebar { border-right:none; border-bottom:1px solid var(--border); }
+  .header { padding:20px 24px; }
+  .sidebar, .main { padding:20px 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Deck<span>Forge</span></div>
+  <div style="font-size:12px;color:var(--muted);">Создай презентацию с AI</div>
+</div>
+
+<div class="app">
+<!-- ─────── SIDEBAR ─────── -->
+<div class="sidebar">
+
+  <div class="form-section">
+    <label class="form-label">Тема презентации *</label>
+    <input class="form-input" id="topic" placeholder="Напр.: Стратегия выхода на рынок СНГ" />
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Твой текст / материалы (необязательно)</label>
+    <textarea class="form-textarea" id="content" placeholder="Вставь свой текст, тезисы, данные — AI структурирует их в слайды. Если оставить пустым, AI сам напишет контент по теме."></textarea>
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Количество слайдов</label>
+    <select class="form-select" id="slideCount">
+      <option value="5">5 слайдов</option>
+      <option value="7" selected>7 слайдов</option>
+      <option value="10">10 слайдов</option>
+      <option value="12">12 слайдов</option>
+      <option value="15">15 слайдов</option>
+    </select>
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Язык презентации</label>
+    <select class="form-select" id="lang">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Цветовая гамма</label>
+    <div class="palette-row" id="paletteRow"></div>
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Стиль</label>
+    <div class="style-row" id="styleRow"></div>
+  </div>
+
+  <div class="form-section">
+    <label class="form-label">Шрифт</label>
+    <div class="font-row" id="fontRow"></div>
+  </div>
+
+  <button class="gen-btn" id="genBtn" onclick="generate()">✦ Создать презентацию</button>
+</div>
+
+<!-- ─────── MAIN ─────── -->
+<div class="main">
+  <div class="state-idle" id="stateIdle">
+    <div class="idle-icon">◈</div>
+    <div class="idle-title">Заполни форму слева</div>
+    <div class="idle-sub">AI сгенерирует структуру и скачает готовый PPTX-файл</div>
+  </div>
+
+  <div class="state-loading" id="stateLoading">
+    <div class="spinner"></div>
+    <div class="loading-title">Генерируем презентацию</div>
+    <div class="loading-sub" id="loadingSub">Подготовка...</div>
+    <div class="loading-steps">
+      <div class="lstep" id="ls1"><div class="lstep-icon">1</div> Анализ темы и структуры</div>
+      <div class="lstep" id="ls2"><div class="lstep-icon">2</div> Генерация контента слайдов</div>
+      <div class="lstep" id="ls3"><div class="lstep-icon">3</div> Применение дизайна</div>
+      <div class="lstep" id="ls4"><div class="lstep-icon">4</div> Сборка PPTX-файла</div>
+    </div>
+  </div>
+
+  <div class="state-done" id="stateDone">
+    <div class="done-icon">✅</div>
+    <div class="done-title">Готово!</div>
+    <div class="done-sub" id="doneSubText">Презентация собрана и скачивается</div>
+    <button class="download-btn" id="downloadBtn">⬇ Скачать PPTX снова</button>
+    <button class="again-btn" onclick="resetToIdle()">← Создать новую</button>
+    <div class="preview-grid" id="previewGrid"></div>
+  </div>
+
+  <div class="state-error" id="stateError">
+    <div class="error-icon">⚠</div>
+    <div class="loading-title">Ошибка</div>
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="again-btn" style="margin-top:20px" onclick="resetToIdle()">← Попробовать снова</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// DATA
+// ═══════════════════════════════════
+const PALETTES = [
+  { id:"dark-indigo",  name:"Dark Indigo",    bg:"0F0F23", accent:"6366F1", text:"E8E8F8", sub:"9CA3C8", cols:["0F0F23","1E1E3A","6366F1","F0F0FF"] },
+  { id:"midnight-teal",name:"Midnight Teal",  bg:"0D1B2A", accent:"2A9D8F", text:"E0F7F5", sub:"7DB8B2", cols:["0D1B2A","1A3344","2A9D8F","E0FBFC"] },
+  { id:"charcoal-gold", name:"Charcoal Gold",  bg:"1A1A1A", accent:"F5A623", text:"F5F0E8", sub:"A89878", cols:["1A1A1A","2D2D2D","F5A623","FFF8E8"] },
+  { id:"navy-coral",   name:"Navy & Coral",   bg:"1B2A4A", accent:"FF6B6B", text:"F8F0F0", sub:"A89898", cols:["1B2A4A","263550","FF6B6B","FFF0F0"] },
+  { id:"forest-linen", name:"Forest & Linen", bg:"2A4035", accent:"74C69D", text:"F2E8D5", sub:"A8987A", cols:["2A4035","1B2B25","74C69D","F2E8D5"] },
+  { id:"pure-white",   name:"Clean Light",    bg:"FFFFFF", accent:"3B5BDB", text:"1A1A2E", sub:"6E7899", cols:["FFFFFF","F0F2FF","3B5BDB","1A1A2E"] },
+  { id:"slate-violet", name:"Slate Violet",   bg:"0D0221", accent:"9B5DE5", text:"E8E0F8", sub:"8870B8", cols:["0D0221","180A35","9B5DE5","F0E8FF"] },
+  { id:"corporate",    name:"Corporate",      bg:"0A2342", accent:"2176AE", text:"F5F5F5", sub:"9EB5C8", cols:["0A2342","0F3264","2176AE","F5F5F5"] },
+];
+
+const STYLES = [
+  { id:"corporate", title:"Корпоративный", desc:"Строго, профессионально" },
+  { id:"startup",   title:"Стартап",       desc:"Смело, с нарративом" },
+  { id:"minimal",   title:"Минималист",    desc:"Воздух, типографика" },
+  { id:"bold",      title:"Дерзкий",       desc:"Крупно, контрастно" },
+];
+
+const FONTS = [
+  { id:"calibri",    label:"Calibri",   head:"Calibri",    body:"Calibri" },
+  { id:"georgia",    label:"Georgia",   head:"Georgia",    body:"Calibri" },
+  { id:"trebuchet",  label:"Trebuchet", head:"Trebuchet MS",body:"Arial" },
+  { id:"cambria",    label:"Cambria",   head:"Cambria",    body:"Calibri" },
+  { id:"arial",      label:"Arial",     head:"Arial Black", body:"Arial" },
+];
+
+let selPalette = PALETTES[0];
+let selStyle   = STYLES[0];
+let selFont    = FONTS[0];
+let lastBlob   = null;
+let lastFilename = "";
+
+// ═══════════════════════════════════
+// RENDER CONTROLS
+// ═══════════════════════════════════
+function renderPalettes(){
+  const r = document.getElementById("paletteRow");
+  r.innerHTML = PALETTES.map(p=>`
+    <div class="palette-chip ${p.id===selPalette.id?'active':''}" 
+         title="${p.name}" onclick="pickPalette('${p.id}')">
+      ${p.cols.slice(0,3).map(c=>`<div style="background:#${c}"></div>`).join("")}
+    </div>`).join("");
+}
+function renderStyles(){
+  const r = document.getElementById("styleRow");
+  r.innerHTML = STYLES.map(s=>`
+    <div class="style-chip ${s.id===selStyle.id?'active':''}" onclick="pickStyle('${s.id}')">
+      <div class="style-chip-title">${s.title}</div>
+      <div class="style-chip-desc">${s.desc}</div>
+    </div>`).join("");
+}
+function renderFonts(){
+  const r = document.getElementById("fontRow");
+  r.innerHTML = FONTS.map(f=>`
+    <div class="font-chip ${f.id===selFont.id?'active':''}" 
+         style="font-family:'${f.head}',serif" onclick="pickFont('${f.id}')">
+      ${f.label}
+    </div>`).join("");
+}
+
+function pickPalette(id){ selPalette=PALETTES.find(p=>p.id===id); renderPalettes(); }
+function pickStyle(id){ selStyle=STYLES.find(s=>s.id===id); renderStyles(); }
+function pickFont(id){ selFont=FONTS.find(f=>f.id===id); renderFonts(); }
+
+// ═══════════════════════════════════
+// STATE MANAGEMENT
+// ═══════════════════════════════════
+function showState(name){
+  ["Idle","Loading","Done","Error"].forEach(s=>{
+    document.getElementById("state"+s).style.display = s.toLowerCase()===name ? "flex":"none";
+  });
+}
+function setStep(n){
+  for(let i=1;i<=4;i++){
+    const el=document.getElementById("ls"+i);
+    if(i<n) el.className="lstep done", el.querySelector(".lstep-icon").innerHTML="✓";
+    else if(i===n) el.className="lstep active";
+    else el.className="lstep";
+  }
+}
+function resetToIdle(){ showState("idle"); lastBlob=null; }
+
+// ═══════════════════════════════════
+// MAIN GENERATE
+// ═══════════════════════════════════
+async function generate(){
+  const topic   = document.getElementById("topic").value.trim();
+  const content = document.getElementById("content").value.trim();
+  const count   = parseInt(document.getElementById("slideCount").value);
+  const lang    = document.getElementById("lang").value;
+
+  if(!topic){ alert("Введи тему презентации"); return; }
+
+  document.getElementById("genBtn").disabled = true;
+  showState("loading");
+  setStep(1);
+  document.getElementById("loadingSub").textContent = "Анализируем тему...";
+
+  try {
+    // ─── Step 1-2: Claude generates slide JSON ───
+    setStep(2);
+    document.getElementById("loadingSub").textContent = "AI генерирует контент...";
+    const slides = await generateSlides(topic, content, count, lang);
+
+    // ─── Step 3: Design ───
+    setStep(3);
+    document.getElementById("loadingSub").textContent = "Применяем дизайн...";
+    await sleep(300);
+
+    // ─── Step 4: Build PPTX ───
+    setStep(4);
+    document.getElementById("loadingSub").textContent = "Собираем PPTX...";
+    const { blob, filename } = await buildPptx(slides, topic);
+
+    lastBlob = blob;
+    lastFilename = filename;
+
+    // ─── Done ───
+    triggerDownload(blob, filename);
+    showState("done");
+    document.getElementById("doneSubText").textContent = `${slides.length} слайдов · ${filename}`;
+    document.getElementById("downloadBtn").onclick = ()=>triggerDownload(lastBlob, lastFilename);
+
+    renderPreview(slides);
+
+  } catch(err){
+    showState("error");
+    document.getElementById("errorMsg").textContent = err.message || "Неизвестная ошибка. Попробуй снова.";
+    console.error(err);
+  }
+
+  document.getElementById("genBtn").disabled = false;
+}
+
+// ═══════════════════════════════════
+// CLAUDE API CALL
+// ═══════════════════════════════════
+async function generateSlides(topic, userContent, count, lang){
+  const langLabel = lang==="ru" ? "Russian" : "English";
+  const hasContent = userContent.length > 10;
+
+  const systemPrompt = `You are an expert presentation designer. Generate slide content as JSON.
+Return ONLY a valid JSON array, no markdown, no explanation.
+Language for all content: ${langLabel}.`;
+
+  const userPrompt = `Create a ${count}-slide professional presentation about: "${topic}"
+${hasContent ? `\nUse this source material:\n${userContent.substring(0,3000)}` : "\nCreate compelling content from your knowledge."}
+
+Style: ${selStyle.title} (${selStyle.desc})
+
+Return JSON array with exactly ${count} objects. Each object:
+{
+  "type": "title" | "section" | "content" | "stats" | "quote" | "conclusion",
+  "title": "slide title (concise)",
+  "subtitle": "subtitle or tagline (only for type=title)",
+  "bullets": ["bullet 1", "bullet 2", "bullet 3"],
+  "stat1": {"value": "87%", "label": "label"},
+  "stat2": {"value": "3x", "label": "label"},  
+  "stat3": {"value": "$2M", "label": "label"},
+  "quote": "inspiring quote text",
+  "quoteAuthor": "Author Name",
+  "note": "short speaker note"
+}
+
+Rules:
+- Slide 1 MUST be type "title" with subtitle
+- Last slide MUST be type "conclusion"  
+- Use type "stats" for at least 1 slide if data makes sense
+- Use type "quote" for at most 1 slide
+- bullets: 3-5 short items, max 12 words each
+- For stats slides, populate stat1/stat2/stat3
+- All text in ${langLabel}
+- ONLY return the JSON array, nothing else`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:4000,
+      system: systemPrompt,
+      messages:[{ role:"user", content: userPrompt }]
+    })
+  });
+
+  if(!response.ok){
+    const err = await response.json().catch(()=>({}));
+    throw new Error("API error: " + (err.error?.message || response.status));
+  }
+
+  const data = await response.json();
+  const rawText = data.content.find(b=>b.type==="text")?.text || "";
+
+  // Parse JSON safely
+  const cleaned = rawText.replace(/```json|```/g,"").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch(e){
+    // Try extracting array
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if(match) return JSON.parse(match[0]);
+    throw new Error("Не удалось разобрать ответ AI. Попробуй снова.");
+  }
+}
+
+// ═══════════════════════════════════
+// BUILD PPTX
+// ═══════════════════════════════════
+async function buildPptx(slides, topic){
+  const P = selPalette;
+  const F = selFont;
+  const isLight = P.id==="pure-white";
+
+  const pres = new PptxGenJS();
+  pres.layout = "LAYOUT_WIDE";
+  pres.title  = topic;
+
+  const C = {
+    bg:      P.bg,
+    accent:  P.accent,
+    text:    P.text,
+    sub:     P.sub,
+    dark:    isLight ? "1A1A2E" : P.bg,
+    light:   isLight ? "FFFFFF" : P.text,
+    card:    isLight ? "F0F2FF" : adjustHex(P.bg, 20),
+  };
+
+  for(let i=0; i<slides.length; i++){
+    const sd = slides[i];
+    const slide = pres.addSlide();
+    slide.background = { color: C.bg };
+
+    // Accent left bar on every slide
+    if(sd.type !== "title"){
+      slide.addShape(pres.shapes.RECTANGLE, {
+        x:0, y:0, w:0.18, h:7.5,
+        fill:{ color: C.accent }, line:{ color: C.accent }
+      });
+    }
+
+    // Slide number (not on title)
+    if(sd.type !== "title" && sd.type !== "conclusion"){
+      slide.addText(`${i+1}`, {
+        x:12.5, y:6.9, w:0.6, h:0.4,
+        fontSize:10, color: C.sub, align:"right", fontFace: F.body
+      });
+    }
+
+    switch(sd.type){
+      case "title":    buildTitleSlide(slide, sd, C, F, pres); break;
+      case "section":  buildSectionSlide(slide, sd, C, F, pres, i); break;
+      case "stats":    buildStatsSlide(slide, sd, C, F, pres); break;
+      case "quote":    buildQuoteSlide(slide, sd, C, F, pres); break;
+      case "conclusion": buildConclusionSlide(slide, sd, C, F, pres); break;
+      default:         buildContentSlide(slide, sd, C, F, pres); break;
+    }
+  }
+
+  const blob = await pres.write({ outputType:"blob" });
+  const safe = topic.replace(/[^a-zA-Zа-яА-Я0-9 ]/g,"").substring(0,30).trim() || "presentation";
+  const filename = `${safe}.pptx`;
+  return { blob, filename };
+}
+
+// ─── Slide builders ───────────────
+
+function buildTitleSlide(slide, sd, C, F, pres){
+  // Full accent strip top
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0, y:0, w:13.3, h:0.12,
+    fill:{ color: C.accent }, line:{ color: C.accent }
+  });
+  // Big accent block left
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0, y:0, w:5.5, h:7.5,
+    fill:{ color: adjustHex(C.bg, 15) }, line:{ color: adjustHex(C.bg, 15) }
+  });
+  // Decorative circle
+  slide.addShape(pres.shapes.OVAL, {
+    x:3.8, y:2.2, w:3.5, h:3.5,
+    fill:{ color: C.accent, transparency:85 }, line:{ color: C.accent, transparency:60, width:1.5 }
+  });
+  // Title
+  slide.addText(sd.title, {
+    x:6.0, y:2.0, w:6.8, h:2.2,
+    fontSize:40, fontFace: F.head, bold:true, color: C.light,
+    valign:"bottom", wrap:true
+  });
+  // Subtitle
+  if(sd.subtitle){
+    slide.addText(sd.subtitle, {
+      x:6.0, y:4.3, w:6.8, h:1.0,
+      fontSize:17, fontFace: F.body, color: C.sub, italic:true, wrap:true
+    });
+  }
+  // Accent line
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:6.0, y:4.1, w:2.5, h:0.05,
+    fill:{ color: C.accent }, line:{ color: C.accent }
+  });
+  // Left label
+  slide.addText("PRESENTATION", {
+    x:0.4, y:3.4, w:4.4, h:0.5,
+    fontSize:10, fontFace: F.body, charSpacing:6,
+    color: C.sub, align:"center"
+  });
+}
+
+function buildSectionSlide(slide, sd, C, F, pres, idx){
+  // Dark section header
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0.18, y:0, w:13.12, h:2.6,
+    fill:{ color: adjustHex(C.bg, 12) }, line:{ color: adjustHex(C.bg, 12) }
+  });
+  slide.addText(sd.title, {
+    x:0.55, y:0.3, w:12.0, h:1.8,
+    fontSize:32, fontFace: F.head, bold:true, color: C.light,
+    valign:"middle", wrap:true
+  });
+  // Bullets
+  if(sd.bullets && sd.bullets.length){
+    const items = sd.bullets.map((b,j)=>({
+      text: b,
+      options:{ bullet:true, color: j===0?C.text:C.sub, fontSize:15, fontFace:F.body,
+                paraSpaceAfter:10, breakLine: j<sd.bullets.length-1 }
+    }));
+    slide.addText(items, {
+      x:0.55, y:2.9, w:12.0, h:4.0,
+      valign:"top"
+    });
+  }
+}
+
+function buildContentSlide(slide, sd, C, F, pres){
+  // Title area bg
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0.18, y:0, w:13.12, h:1.6,
+    fill:{ color: adjustHex(C.bg, 10) }, line:{ color: adjustHex(C.bg, 10) }
+  });
+  slide.addText(sd.title, {
+    x:0.5, y:0.15, w:12.0, h:1.3,
+    fontSize:26, fontFace: F.head, bold:true, color: C.light, valign:"middle", wrap:true
+  });
+  // Accent dot
+  slide.addShape(pres.shapes.OVAL, {
+    x:0.22, y:0.6, w:0.16, h:0.16,
+    fill:{ color: C.accent }, line:{ color: C.accent }
+  });
+
+  if(sd.bullets && sd.bullets.length){
+    // 2-col if 4+ bullets
+    if(sd.bullets.length >= 4){
+      const half = Math.ceil(sd.bullets.length/2);
+      const col1 = sd.bullets.slice(0,half);
+      const col2 = sd.bullets.slice(half);
+      const makeItems = arr => arr.map((b,j)=>({
+        text:b,
+        options:{ bullet:true, color:j===0?C.text:C.sub, fontSize:14, fontFace:F.body,
+                  paraSpaceAfter:12, breakLine:j<arr.length-1 }
+      }));
+      slide.addText(makeItems(col1), { x:0.5, y:1.9, w:5.8, h:5.0, valign:"top" });
+      slide.addText(makeItems(col2), { x:6.8, y:1.9, w:5.8, h:5.0, valign:"top" });
+      // Divider
+      slide.addShape(pres.shapes.LINE, {
+        x:6.55, y:2.1, w:0, h:4.2,
+        line:{ color: adjustHex(C.bg, 30), width:1 }
+      });
+    } else {
+      const items = sd.bullets.map((b,j)=>({
+        text:b,
+        options:{ bullet:true, color:j===0?C.text:C.sub, fontSize:16, fontFace:F.body,
+                  paraSpaceAfter:14, breakLine:j<sd.bullets.length-1 }
+      }));
+      slide.addText(items, { x:0.5, y:1.9, w:12.0, h:5.0, valign:"top" });
+    }
+  }
+}
+
+function buildStatsSlide(slide, sd, C, F, pres){
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0.18, y:0, w:13.12, h:1.6,
+    fill:{ color: adjustHex(C.bg,10) }, line:{ color: adjustHex(C.bg,10) }
+  });
+  slide.addText(sd.title, {
+    x:0.5, y:0.15, w:12.0, h:1.3,
+    fontSize:26, fontFace:F.head, bold:true, color:C.light, valign:"middle", wrap:true
+  });
+
+  const stats = [sd.stat1, sd.stat2, sd.stat3].filter(Boolean);
+  const cols = stats.length || 3;
+  const cardW = (13.3 - 0.18 - 0.5*(cols+1)) / cols;
+  const startX = 0.5;
+
+  stats.forEach((st, i)=>{
+    const cx = startX + i*(cardW+0.5) + 0.18;
+    // Card bg
+    slide.addShape(pres.shapes.RECTANGLE, {
+      x:cx, y:2.0, w:cardW, h:3.8,
+      fill:{ color: adjustHex(C.bg,18) },
+      line:{ color: C.accent, width:1.5 },
+      shadow:{ type:"outer", color:"000000", blur:10, offset:3, angle:135, opacity:0.2 }
+    });
+    // Big value
+    slide.addText(st.value||"—", {
+      x:cx+0.1, y:2.5, w:cardW-0.2, h:1.8,
+      fontSize:52, fontFace:F.head, bold:true, color:C.accent,
+      align:"center", valign:"middle"
+    });
+    // Label
+    slide.addText(st.label||"", {
+      x:cx+0.1, y:4.5, w:cardW-0.2, h:1.0,
+      fontSize:14, fontFace:F.body, color:C.sub,
+      align:"center", wrap:true
+    });
+    // Top accent line
+    slide.addShape(pres.shapes.RECTANGLE, {
+      x:cx, y:2.0, w:cardW, h:0.08,
+      fill:{ color:C.accent }, line:{ color:C.accent }
+    });
+  });
+
+  // Context bullet
+  if(sd.bullets && sd.bullets[0]){
+    slide.addText(sd.bullets[0], {
+      x:0.68, y:6.0, w:12.0, h:0.8,
+      fontSize:13, fontFace:F.body, color:C.sub, italic:true
+    });
+  }
+}
+
+function buildQuoteSlide(slide, sd, C, F, pres){
+  // Full-slide accent treatment
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0, y:0, w:13.3, h:7.5,
+    fill:{ color: adjustHex(C.bg, 8) }, line:{ color: adjustHex(C.bg, 8) }
+  });
+  // Big quote mark
+  slide.addText("\u201C", {
+    x:0.5, y:0.2, w:3, h:2.5,
+    fontSize:140, fontFace:F.head, color:C.accent, opacity:0.4, valign:"top"
+  });
+  // Quote text
+  const quoteText = sd.quote || sd.bullets?.[0] || sd.title;
+  slide.addText(quoteText, {
+    x:1.5, y:1.5, w:10.0, h:3.5,
+    fontSize:26, fontFace:F.head, italic:true, color:C.light,
+    align:"center", valign:"middle", wrap:true
+  });
+  // Author
+  if(sd.quoteAuthor){
+    slide.addShape(pres.shapes.RECTANGLE, {
+      x:5.65, y:5.3, w:2.0, h:0.05,
+      fill:{ color:C.accent }, line:{ color:C.accent }
+    });
+    slide.addText("— "+sd.quoteAuthor, {
+      x:1.5, y:5.5, w:10.0, h:0.6,
+      fontSize:14, fontFace:F.body, color:C.sub, align:"center"
+    });
+  }
+}
+
+function buildConclusionSlide(slide, sd, C, F, pres){
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0, y:0, w:13.3, h:0.12,
+    fill:{ color:C.accent }, line:{ color:C.accent }
+  });
+  // Centered layout
+  slide.addShape(pres.shapes.OVAL, {
+    x:4.5, y:1.0, w:4.3, h:4.3,
+    fill:{ color:C.accent, transparency:88 }, line:{ color:C.accent, transparency:55, width:1 }
+  });
+  slide.addText(sd.title, {
+    x:1.5, y:1.5, w:10.3, h:2.0,
+    fontSize:36, fontFace:F.head, bold:true, color:C.light,
+    align:"center", valign:"middle", wrap:true
+  });
+  if(sd.bullets && sd.bullets.length){
+    const items = sd.bullets.map((b,j)=>({
+      text:b,
+      options:{ bullet:true, color:j===0?C.text:C.sub, fontSize:15, fontFace:F.body,
+                paraSpaceAfter:10, breakLine:j<sd.bullets.length-1 }
+    }));
+    slide.addText(items, { x:2.5, y:3.7, w:8.3, h:3.0, valign:"top" });
+  }
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x:0, y:7.38, w:13.3, h:0.12,
+    fill:{ color:C.accent }, line:{ color:C.accent }
+  });
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function adjustHex(hex, amount){
+  const num = parseInt(hex, 16);
+  let r = Math.min(255, ((num>>16)&0xFF)+amount);
+  let g = Math.min(255, ((num>>8)&0xFF)+amount);
+  let b = Math.min(255, (num&0xFF)+amount);
+  return ((r<<16)|(g<<8)|b).toString(16).padStart(6,"0");
+}
+
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function renderPreview(slides){
+  const grid = document.getElementById("previewGrid");
+  grid.innerHTML = `<div style="font-family:'Unbounded',sans-serif;font-size:11px;color:var(--muted);letter-spacing:.1em;margin-top:8px;margin-bottom:4px;">СТРУКТУРА СЛАЙДОВ</div>`;
+  slides.forEach((sd,i)=>{
+    const div = document.createElement("div");
+    div.className = "slide-preview";
+    div.innerHTML = `
+      <div class="sp-num">СЛАЙД ${i+1} · ${sd.type.toUpperCase()}</div>
+      <div class="sp-title">${sd.title||""}</div>
+      <div class="sp-content">${(sd.bullets||[]).slice(0,2).join(" · ")}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+renderPalettes();
+renderStyles();
+renderFonts();
+showState("idle");
+</script>
+</body>
+</html>
