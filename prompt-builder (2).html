@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptDeck</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Onest:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Syne:wght@700&family=Bebas+Neue&family=DM+Serif+Display:ital@1&family=Josefin+Sans:wght@300;600&family=Fraunces:ital,wght@1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f; --border:#1e1e2e; --text:#e8e8f0;
+  --muted:#666680; --accent:#5c5cff; --accent2:#ff5ca8;
+  --accent3:#00e5c0; --card:#13131d;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Onest',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+
+header{padding:36px 48px 0;position:relative;z-index:1;}
+.logo{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:800;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;}
+
+.hero{padding:44px 48px 0;position:relative;z-index:1;}
+.hero h1{font-family:'Unbounded',sans-serif;font-size:clamp(24px,4vw,48px);font-weight:800;line-height:1.1;max-width:680px;}
+.hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{margin-top:14px;color:var(--muted);font-size:14px;max-width:460px;line-height:1.6;}
+
+.progress-bar{display:flex;gap:5px;padding:36px 48px 0;position:relative;z-index:1;}
+.ps{height:3px;flex:1;background:var(--border);border-radius:2px;transition:background .4s;}
+.ps.done{background:var(--accent);}
+.ps.active{background:linear-gradient(90deg,var(--accent),var(--accent2));}
+
+.steps-container{padding:28px 48px 80px;position:relative;z-index:1;max-width:1200px;}
+.step{display:none;animation:si .35s ease forwards;}
+.step.active{display:block;}
+@keyframes si{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+.slabel{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+.stitle{font-family:'Unbounded',sans-serif;font-size:clamp(20px,2.5vw,30px);font-weight:600;margin-bottom:24px;line-height:1.3;}
+
+/* topic input */
+.topic-input{width:100%;max-width:640px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--text);font-family:'Onest',sans-serif;font-size:15px;outline:none;transition:border-color .2s;resize:vertical;min-height:80px;}
+.topic-input:focus{border-color:var(--accent);}
+.topic-input::placeholder{color:var(--muted);}
+
+/* palettes */
+.sec-title{font-family:'Unbounded',sans-serif;font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin:24px 0 12px;display:flex;align-items:center;gap:10px;}
+.sec-title:first-of-type{margin-top:0;}
+.sec-title .ln{flex:1;height:1px;background:var(--border);}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(162px,1fr));gap:10px;margin-bottom:6px;}
+.pcard{border:1.5px solid var(--border);border-radius:12px;cursor:pointer;transition:border-color .2s,transform .2s,box-shadow .2s;overflow:hidden;background:var(--card);}
+.pcard:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.5);}
+.pcard.sel{border-color:var(--accent);box-shadow:0 0 0 3px rgba(92,92,255,.22);}
+.pcard.rnd{border-style:dashed;}
+.pcard.rnd.sel{border-style:solid;}
+.pswatch{height:56px;display:flex;}
+.pswatch div{flex:1;}
+.pinfo{padding:8px 11px 10px;}
+.pname{font-family:'Unbounded',sans-serif;font-size:10px;font-weight:600;letter-spacing:.05em;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmood{font-size:10px;color:var(--muted);}
+
+.refresh-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:'Unbounded',sans-serif;font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:12px;letter-spacing:.05em;}
+.refresh-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.ri{display:inline-block;transition:transform .45s ease;}
+.refresh-btn:hover .ri{transform:rotate(180deg);}
+
+/* option grid */
+.ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:11px;}
+.ocard{border:1.5px solid var(--border);border-radius:12px;padding:15px 16px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s;background:var(--card);user-select:none;}
+.ocard:hover{border-color:var(--accent);transform:translateY(-2px);}
+.ocard.sel{border-color:var(--accent);background:rgba(92,92,255,.08);}
+.oicon{font-size:20px;margin-bottom:7px;}
+.otitle{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;margin-bottom:3px;}
+.odesc{font-size:11px;color:var(--muted);line-height:1.4;}
+
+/* layout */
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));gap:13px;}
+.lcard{border:1.5px solid var(--border);border-radius:13px;padding:15px;cursor:pointer;transition:border-color .2s,transform .15s,background .2s;background:var(--card);}
+.lcard:hover{transform:translateY(-2px);border-color:var(--muted);}
+.lcard.sel{border-color:var(--accent);background:rgba(92,92,255,.08);}
+.lpreview{width:100%;aspect-ratio:16/9;border-radius:8px;background:#1a1a28;margin-bottom:11px;position:relative;overflow:hidden;}
+
+/* fonts */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:11px;}
+.fcard{border:1.5px solid var(--border);border-radius:13px;padding:17px 17px 13px;cursor:pointer;transition:border-color .2s,transform .15s,background .2s;background:var(--card);}
+.fcard:hover{transform:translateY(-2px);border-color:var(--muted);}
+.fcard.sel{border-color:var(--accent);background:rgba(92,92,255,.08);}
+.fsample{font-size:36px;line-height:1;margin-bottom:9px;min-height:44px;}
+.fpair{font-family:'Onest',sans-serif!important;font-size:10px;font-weight:500;color:var(--muted);margin-bottom:2px;}
+.fdesc{font-family:'Onest',sans-serif!important;font-size:11px;color:var(--muted);opacity:.7;line-height:1.4;}
+.ftag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:9px;font-family:'Unbounded',sans-serif;font-weight:600;background:rgba(92,92,255,.12);color:var(--accent);margin-top:6px;letter-spacing:.05em;}
+
+/* slide count */
+.count-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;max-width:700px;}
+.ccard{border:1.5px solid var(--border);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s;background:var(--card);text-align:center;user-select:none;}
+.ccard:hover{border-color:var(--accent);transform:translateY(-2px);}
+.ccard.sel{border-color:var(--accent);background:rgba(92,92,255,.08);}
+.cnum{font-family:'Unbounded',sans-serif;font-size:32px;font-weight:800;color:var(--accent);line-height:1;margin-bottom:6px;}
+.clabel{font-size:11px;color:var(--muted);}
+
+/* ── PREVIEW STEP ── */
+.preview-wrapper{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;}
+.preview-canvas-wrap{flex:0 0 auto;}
+.preview-meta{flex:1;min-width:260px;padding-top:8px;}
+.pmeta-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:600;margin-bottom:6px;}
+.pmeta-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pmeta-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pmeta-key{font-size:12px;color:var(--muted);min-width:90px;}
+.pmeta-val{font-size:12px;color:var(--text);}
+.preview-label{font-family:'Unbounded',sans-serif;font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
+.preview-note{font-size:12px;color:var(--muted);margin-top:20px;line-height:1.6;max-width:360px;}
+
+/* slide canvas */
+#slideCanvas{
+  width:560px;height:315px;border-radius:14px;overflow:hidden;
+  border:1.5px solid var(--border);position:relative;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);flex-shrink:0;
+}
+
+/* nav */
+.nav{display:flex;gap:11px;margin-top:32px;align-items:center;}
+.btn{padding:13px 26px;border-radius:10px;font-family:'Unbounded',sans-serif;font-size:12px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:all .2s;border:none;}
+.btn-p{background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;}
+.btn-p:hover{opacity:.88;transform:translateY(-1px);}
+.btn-p:disabled{opacity:.28;cursor:not-allowed;transform:none;}
+.btn-g{background:transparent;color:var(--muted);border:1.5px solid var(--border);}
+.btn-g:hover{border-color:var(--muted);color:var(--text);}
+
+/* result */
+#result-box{display:none;}
+.sep{height:1px;background:var(--border);margin:36px 0;}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:10px;font-family:'Unbounded',sans-serif;font-weight:600;background:rgba(92,92,255,.15);color:var(--accent);margin-left:8px;vertical-align:middle;}
+.rtabs{display:flex;gap:8px;margin-bottom:18px;}
+.rtab{padding:8px 18px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.rtab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.pout{background:var(--card);border:1.5px solid var(--border);border-radius:13px;padding:22px;font-size:14px;line-height:1.85;white-space:pre-wrap;color:var(--text);max-height:440px;overflow-y:auto;}
+.cpbtn{margin-top:13px;display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-family:'Unbounded',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.cpbtn:hover,.cpbtn.cp{border-color:var(--accent3);color:var(--accent3);}
+
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<header><div class="logo">PromptDeck</div></header>
+<div class="hero">
+  <h1>Собери <span>идеальный промпт</span><br>для презентации</h1>
+  <p>Пошаговый конструктор → превью стиля → готовый промпт.</p>
+</div>
+<div class="progress-bar" id="pbar"></div>
+
+<div class="steps-container">
+
+<!-- 1. Тема -->
+<div class="step active" id="step-1">
+  <div class="slabel">Шаг 1 / 7</div>
+  <div class="stitle">Тема презентации</div>
+  <textarea class="topic-input" id="topicInput" placeholder="Например: Маркетинговая стратегия на Q3 2025 для B2B SaaS&#10;(можно пропустить — промпт будет универсальным)"></textarea>
+  <div class="nav"><button class="btn btn-p" onclick="next()">Далее →</button></div>
+</div>
+
+<!-- 2. Цвета -->
+<div class="step" id="step-2">
+  <div class="slabel">Шаг 2 / 7</div>
+  <div class="stitle">Цветовая гамма</div>
+  <div class="sec-title"><span>Двухцветные</span><span class="ln"></span><span>чёткость · контраст</span></div>
+  <div class="pgrid" id="p2"></div>
+  <div class="sec-title"><span>Трёхцветные</span><span class="ln"></span><span>баланс · акценты</span></div>
+  <div class="pgrid" id="p3"></div>
+  <div class="sec-title"><span>Многоцветные</span><span class="ln"></span><span>экспрессия · глубина</span></div>
+  <div class="pgrid" id="p4"></div>
+  <div class="sec-title"><span>Случайные</span><span class="ln"></span><span>генерируются каждый раз</span></div>
+  <button class="refresh-btn" onclick="regen()"><span class="ri">↻</span> Перегенерировать</button>
+  <div class="pgrid" id="pR"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b2" onclick="next()" disabled>Далее →</button>
+  </div>
+</div>
+
+<!-- 3. Плотность -->
+<div class="step" id="step-3">
+  <div class="slabel">Шаг 3 / 7</div>
+  <div class="stitle">Плотность информации</div>
+  <div class="ogrid" id="dg"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b3" onclick="next()" disabled>Далее →</button>
+  </div>
+</div>
+
+<!-- 4. Стиль -->
+<div class="step" id="step-4">
+  <div class="slabel">Шаг 4 / 7</div>
+  <div class="stitle">Визуальный стиль</div>
+  <div class="ogrid" id="sg"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b4" onclick="next()" disabled>Далее →</button>
+  </div>
+</div>
+
+<!-- 5. Компоновка -->
+<div class="step" id="step-5">
+  <div class="slabel">Шаг 5 / 7</div>
+  <div class="stitle">Компоновка слайдов</div>
+  <div class="lgrid" id="lg"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b5" onclick="next()" disabled>Далее →</button>
+  </div>
+</div>
+
+<!-- 6. Шрифт -->
+<div class="step" id="step-6">
+  <div class="slabel">Шаг 6 / 7</div>
+  <div class="stitle">Шрифтовая пара</div>
+  <div class="fgrid" id="fg"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b6" onclick="next()" disabled>Далее →</button>
+  </div>
+</div>
+
+<!-- 7. Количество слайдов -->
+<div class="step" id="step-7">
+  <div class="slabel">Шаг 7 / 7</div>
+  <div class="stitle">Количество слайдов</div>
+  <div class="count-grid" id="cg"></div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="prev()">← Назад</button>
+    <button class="btn btn-p" id="b7" onclick="showPreview()" disabled>Посмотреть стиль →</button>
+  </div>
+</div>
+
+<!-- PREVIEW -->
+<div class="step" id="step-preview">
+  <div class="slabel">Предпросмотр стиля</div>
+  <div class="stitle">Так будет выглядеть твоя презентация</div>
+  <div class="preview-wrapper">
+    <div class="preview-canvas-wrap">
+      <div class="preview-label">Пример слайда</div>
+      <div id="slideCanvas"></div>
+    </div>
+    <div class="preview-meta">
+      <div class="pmeta-title">Выбранные параметры</div>
+      <div style="margin-top:14px;" id="metaRows"></div>
+      <div class="preview-note">Это приблизительный набросок стиля — пропорции, цвета и шрифты. Реальная презентация будет сгенерирована AI-инструментом на основе промпта.</div>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="btn btn-g" onclick="backToStep7()">← Изменить</button>
+    <button class="btn btn-p" onclick="buildPrompt()">Получить промпт →</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result-box">
+  <div class="sep"></div>
+  <div class="slabel">Готово</div>
+  <div class="stitle">Твой промпт <span class="badge">RU + EN</span></div>
+  <div class="rtabs">
+    <button class="rtab active" onclick="switchLang('ru',this)">Русский</button>
+    <button class="rtab" onclick="switchLang('en',this)">English</button>
+  </div>
+  <div class="pout" id="ptext"></div>
+  <button class="cpbtn" id="cpbtn" onclick="copyP()">📋 Скопировать</button>
+  <div style="margin-top:22px;"><button class="btn btn-g" onclick="resetAll()">← Начать заново</button></div>
+</div>
+
+</div><!-- /steps-container -->
+
+<script>
+// ═══════════ DATA ═══════════
+const PALETTES={
+  two:[
+    {name:"Obsidian & Cream",   colors:["#1A1A1A","#F5F0E8"],            mood:"минимализм · премиум"},
+    {name:"Arctic Night",       colors:["#0D1B2A","#E0FBFC"],            mood:"холодный · технологичный"},
+    {name:"Carbon & Amber",     colors:["#111111","#F5A623"],            mood:"tech · акцент"},
+    {name:"Ivory & Charcoal",   colors:["#F7F4EF","#2B2B2B"],            mood:"editorial · светлый"},
+    {name:"Forest & Linen",     colors:["#2A4035","#F2E8D5"],            mood:"органика · тепло"},
+    {name:"Navy & Blush",       colors:["#1B2A4A","#FADADD"],            mood:"элегантно · женственно"},
+    {name:"Carbon & Cyan",      colors:["#0F0F0F","#00E5FF"],            mood:"неон · SaaS"},
+  ],
+  three:[
+    {name:"Corporate Blue",     colors:["#0A2342","#2176AE","#F5F5F5"],  mood:"бизнес · серьёзность"},
+    {name:"Sunset Brand",       colors:["#1A0533","#FF6B35","#FFD166"],  mood:"смелость · энергия"},
+    {name:"Midnight Violet",    colors:["#0D0221","#5C2D91","#E0C3FC"],  mood:"инновации · глубина"},
+    {name:"Ocean Teal",         colors:["#003049","#2A9D8F","#E9F7F6"],  mood:"спокойствие · экспертиза"},
+    {name:"B&W + Scarlet",      colors:["#111111","#EBEBEB","#E63946"],  mood:"дерзко · модно"},
+    {name:"Sage Terracotta",    colors:["#2D4739","#C4763B","#EDE0D4"],  mood:"натуральность · ESG"},
+    {name:"Dusk Rose",          colors:["#2C1654","#9B5DE5","#F7B2BD"],  mood:"нежно · luxury"},
+    {name:"Nordic Fog",         colors:["#ECEFF4","#4C566A","#88C0D0"],  mood:"скандинавский минимализм"},
+  ],
+  four:[
+    {name:"Brand Spectrum",     colors:["#0F0F23","#5C5CFF","#FF5CA8","#00E5C0"], mood:"продуктовый · SaaS"},
+    {name:"Earth Richness",     colors:["#2C1810","#8B4513","#D4A855","#F5E6D3"], mood:"роскошь · тепло"},
+    {name:"Neon City",          colors:["#0A0A14","#FF0080","#7B00FF","#00FFFF"], mood:"cyberpunk · драйв"},
+    {name:"Deep Jungle",        colors:["#1B2B25","#2D6A4F","#74C69D","#D8F3DC"], mood:"устойчивость · ESG"},
+    {name:"Copper & Smoke",     colors:["#1C1C1E","#3A3A3C","#B87333","#FFD700"], mood:"индустриальный люкс"},
+    {name:"Bauhaus",            colors:["#F5F5F5","#E63946","#1D3557","#F4A261"], mood:"геометрия · классика"},
+    {name:"Pastel Studio",      colors:["#FFF8F0","#FFD6D6","#D6E8FF","#D6FFE8"], mood:"мягко · дружелюбно"},
+    {name:"Midnight Data",      colors:["#060A12","#0F3460","#16213E","#00B4D8"], mood:"аналитика · fintech"},
+    {name:"Monochrome + Lime",  colors:["#0D0D0D","#1A1A1A","#2C2C2C","#C8FA00"], mood:"брутальный · tech"},
+    {name:"Rose Gold Studio",   colors:["#1A0A0A","#8B2252","#E8A0BF","#FFF0F5"], mood:"люкс · женственно"},
+  ],
+};
+
+const DENSITIES=[
+  {id:"minimal",    icon:"◻",title:"Минималистично",desc:"1 мысль на слайд. Максимум воздуха."},
+  {id:"balanced",   icon:"▣",title:"Сбалансировано", desc:"Текст + визуал. Читаемо с 5 метров."},
+  {id:"detailed",   icon:"▦",title:"Детально",        desc:"Факты, графики, пояснения."},
+  {id:"data-heavy", icon:"▩",title:"Насыщенно",       desc:"Отчёт, аналитика, много данных."},
+];
+const STYLES=[
+  {id:"corporate",icon:"🏢",title:"Корпоративный",desc:"Строго, профессионально."},
+  {id:"startup",  icon:"🚀",title:"Стартап",       desc:"Смело, живо, с историей."},
+  {id:"minimal",  icon:"◻", title:"Минималист",    desc:"Типографика решает всё."},
+  {id:"creative", icon:"🎨",title:"Креативный",    desc:"Нестандартно, запоминается."},
+  {id:"editorial",icon:"📰",title:"Editorial",     desc:"Как разворот журнала."},
+  {id:"tech",     icon:"⬡", title:"Tech / Data",   desc:"Графики, схемы, точность."},
+  {id:"luxury",   icon:"♦", title:"Люкс",          desc:"Премиум, изысканно."},
+  {id:"playful",  icon:"✦", title:"Игривый",       desc:"Иллюстрации, цвет, характер."},
+];
+const LAYOUTS=[
+  {id:"centered",  name:"Центрированный",desc:"Всё по центру. Ясность.",
+   prev:`<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;"><div style="width:60%;height:8px;background:#5c5cff;border-radius:3px;opacity:.8"></div><div style="width:40%;height:5px;background:#666;border-radius:3px;opacity:.5"></div><div style="width:50%;height:5px;background:#666;border-radius:3px;opacity:.3;margin-top:4px"></div></div>`},
+  {id:"left-heavy",name:"Левый акцент",  desc:"Заголовок слева, контент справа.",
+   prev:`<div style="position:absolute;inset:0;display:flex;gap:8px;padding:12px;"><div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:5px;"><div style="width:90%;height:8px;background:#5c5cff;border-radius:3px;opacity:.8"></div><div style="width:70%;height:5px;background:#666;border-radius:3px;opacity:.5"></div></div><div style="flex:1;background:#1e1e30;border-radius:6px;opacity:.7"></div></div>`},
+  {id:"split",     name:"50/50",         desc:"Текст и визуал поровну.",
+   prev:`<div style="position:absolute;inset:0;display:flex;padding:10px;gap:6px;"><div style="flex:1;background:#1e1e30;border-radius:6px;display:flex;align-items:center;justify-content:center;"><div style="width:50%;height:6px;background:#5c5cff;border-radius:2px;opacity:.8"></div></div><div style="flex:1;background:#1a1a28;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"><div style="width:60%;height:5px;background:#888;border-radius:2px;opacity:.7"></div><div style="width:80%;height:5px;background:#888;border-radius:2px;opacity:.5"></div></div></div>`},
+  {id:"top-bottom",name:"Верх / Низ",    desc:"Заголовок сверху, контент снизу.",
+   prev:`<div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:10px;gap:6px;"><div style="height:35%;background:#1e1e30;border-radius:6px;display:flex;align-items:center;justify-content:center;"><div style="width:50%;height:7px;background:#5c5cff;border-radius:2px;opacity:.8"></div></div><div style="flex:1;background:#1a1a28;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:6px;"><div style="flex:1;height:6px;background:#888;border-radius:2px;opacity:.6"></div><div style="flex:1;height:6px;background:#888;border-radius:2px;opacity:.4"></div></div></div>`},
+  {id:"grid",      name:"Сетка",         desc:"Карточки, тезисы по сетке.",
+   prev:`<div style="position:absolute;inset:0;padding:10px;display:flex;flex-direction:column;gap:6px;"><div style="width:50%;height:7px;background:#5c5cff;border-radius:2px;opacity:.8;margin-bottom:4px"></div><div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5px;"><div style="background:#1e1e30;border-radius:5px;opacity:.7"></div><div style="background:#1e1e30;border-radius:5px;opacity:.6"></div><div style="background:#1e1e30;border-radius:5px;opacity:.5"></div><div style="background:#1e1e30;border-radius:5px;opacity:.4"></div></div></div>`},
+  {id:"fullbleed", name:"Full Bleed",    desc:"Картинка во весь слайд, текст поверх.",
+   prev:`<div style="position:absolute;inset:0;background:linear-gradient(135deg,#1a1a40,#2d1b4e);border-radius:8px;display:flex;align-items:flex-end;padding:14px;"><div style="display:flex;flex-direction:column;gap:4px;"><div style="width:80px;height:7px;background:rgba(255,255,255,.85);border-radius:2px"></div><div style="width:55px;height:5px;background:rgba(255,255,255,.4);border-radius:2px"></div></div></div>`},
+];
+const FONTS=[
+  {id:"playfair-inter",    ss:"font-family:'Playfair Display',Georgia,serif;font-weight:700;",                     tag:"Editorial", title:"Playfair Display + Inter",         desc:"Редакционно, элегантно"},
+  {id:"cormorant-source",  ss:"font-family:'Cormorant Garamond',serif;font-style:italic;font-size:42px;",          tag:"Luxury",    title:"Cormorant Garamond + Source Sans",  desc:"Утончённость, изысканность"},
+  {id:"dm-serif-dm",       ss:"font-family:'DM Serif Display',serif;font-style:italic;",                           tag:"Refined",   title:"DM Serif Display + DM Sans",        desc:"Мягкая элегантность"},
+  {id:"fraunces-manrope",  ss:"font-family:'Fraunces',serif;font-style:italic;font-weight:700;",                   tag:"Creative",  title:"Fraunces + Manrope",                desc:"Органично, нестандартно"},
+  {id:"playfair-manrope",  ss:"font-family:'Playfair Display',serif;font-weight:700;font-size:36px;",              tag:"Magazine",  title:"Playfair Display + Manrope",        desc:"The Economist, New Yorker"},
+  {id:"unbounded-onest",   ss:"font-family:'Unbounded',sans-serif;font-weight:800;font-size:28px;",                tag:"Bold",      title:"Unbounded + Onest",                 desc:"Дерзко, брендово"},
+  {id:"syne-manrope",      ss:"font-family:'Syne',sans-serif;font-weight:700;",                                    tag:"Art",       title:"Syne + Manrope",                    desc:"Арт-дирекшн, нестандартно"},
+  {id:"space-dm",          ss:"font-family:'Space Grotesk','Helvetica Neue',sans-serif;font-weight:600;",          tag:"Tech",      title:"Space Grotesk + DM Sans",           desc:"SaaS, технологично"},
+  {id:"josefin-lato",      ss:"font-family:'Josefin Sans',sans-serif;font-weight:600;letter-spacing:.06em;",       tag:"Minimal",   title:"Josefin Sans + Lato",               desc:"Чисто, геометрично"},
+  {id:"josefin-light",     ss:"font-family:'Josefin Sans',sans-serif;font-weight:300;letter-spacing:.1em;",        tag:"Air",       title:"Josefin Sans Light + Source Sans",  desc:"Лёгкость, высокая мода"},
+  {id:"montserrat-lato",   ss:"font-family:'Montserrat','Arial',sans-serif;font-weight:700;",                      tag:"Universal", title:"Montserrat + Lato",                 desc:"Универсально, корпоративно"},
+  {id:"bebas-inter",       ss:"font-family:'Bebas Neue',Impact,sans-serif;letter-spacing:.06em;",                  tag:"Display",   title:"Bebas Neue + Inter",                desc:"Монолитные заголовки, мощь"},
+  {id:"unbounded-dm",      ss:"font-family:'Unbounded',sans-serif;font-weight:600;font-size:28px;",                tag:"Brand",     title:"Unbounded + DM Sans",               desc:"Сильный бренд, Web3"},
+  {id:"fraunces-dm",       ss:"font-family:'Fraunces',serif;font-style:italic;font-weight:700;",                   tag:"Warm",      title:"Fraunces + DM Sans",                desc:"Человечно, EdTech"},
+  {id:"cormorant-manrope", ss:"font-family:'Cormorant Garamond',serif;font-style:italic;font-size:42px;",          tag:"Elegant",   title:"Cormorant Garamond + Manrope",      desc:"Роскошь + читаемость"},
+  {id:"space-inter",       ss:"font-family:'Space Grotesk',sans-serif;font-size:34px;",                            tag:"Product",   title:"Space Grotesk + Inter",             desc:"Data, Analytics"},
+  {id:"dm-serif-inter",    ss:"font-family:'DM Serif Display',serif;",                                             tag:"Balanced",  title:"DM Serif Display + Inter",          desc:"Мягко, современно"},
+  {id:"montserrat-source", ss:"font-family:'Montserrat',sans-serif;font-weight:600;",                              tag:"Safe",      title:"Montserrat + Source Sans",          desc:"Надёжно, везде"},
+  {id:"playfair-source",   ss:"font-family:'Playfair Display',serif;font-weight:700;font-size:34px;",              tag:"Classic",   title:"Playfair Display + Source Sans",    desc:"Классика, консервативно"},
+  {id:"syne-source",       ss:"font-family:'Syne',sans-serif;font-weight:700;",                                    tag:"Geometric", title:"Syne + Source Sans Pro",            desc:"Арт, дизайн-студии"},
+];
+const COUNTS=[
+  {n:5, label:"слайдов",sub:"коротко"},
+  {n:7, label:"слайдов",sub:"стандарт"},
+  {n:10,label:"слайдов",sub:"подробно"},
+  {n:12,label:"слайдов",sub:"детально"},
+  {n:15,label:"слайдов",sub:"развёрнуто"},
+  {n:20,label:"слайдов",sub:"полный доклад"},
+];
+
+// ═══════════ RANDOM PALETTES ═══════════
+const HLABELS=["Комплементарная","Триадная","Аналогичная","Сплит-комп","Монохромная","Тетрадная","Акцентная"];
+function h2hex(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(Math.min(k-3,9-k,1),-1);return Math.round(255*c).toString(16).padStart(2,'0');};return `#${f(0)}${f(8)}${f(4)}`;}
+function genRP(i){const h=Math.floor(Math.random()*360),hi=Math.floor(Math.random()*7),dark=Math.random()>.3,cnt=[2,2,3,3,3,4][Math.floor(Math.random()*6)];const c=[];if(dark)c.push(h2hex(h,Math.floor(Math.random()*18),Math.floor(Math.random()*10)+4));else c.push(h2hex(h,8,95));const pushes=[[[(h+180)%360,72,54],[(h)%360,65,65],[(h+30)%360,78,68]],[[(h+120)%360,72,56],[(h+240)%360,68,58],[h,60,70]],[[(h+28)%360,75,56],[(h+56)%360,65,66],[(h-22+360)%360,55,70]],[[(h+150)%360,72,56],[(h+210)%360,68,60],[h,60,66]],[[h,70,64],[h,50,78],[h,30,90]],[[(h+90)%360,70,58],[(h+180)%360,68,55],[(h+270)%360,72,62]],[[h,82,60],[h,30,85],[(h+20)%360,70,50]]];for(let j=0;j<cnt-1&&j<3;j++){const[a,b,l2]=pushes[hi][j]||pushes[0][j];c.push(h2hex(a,b,l2));}return{name:`Random ${String(i+1).padStart(2,'0')} · ${HLABELS[hi]}`,colors:c.slice(0,cnt),mood:`${cnt} цвета · ${dark?'тёмная':'светлая'}`,isRandom:true};}
+let randPs=[];
+function genAllRP(){randPs=Array.from({length:15},(_,i)=>genRP(i));}
+
+// ═══════════ STATE ═══════════
+let cur=1;const TOTAL=7;
+const ST={topic:"",palette:null,density:null,style:null,layout:null,font:null,count:null};
+let pRu="",pEn="",curLang="ru";
+
+// ═══════════ INIT ═══════════
+window.onload=()=>{genAllRP();renderProg();renderAll();};
+
+function renderProg(){
+  const b=document.getElementById("pbar");b.innerHTML="";
+  for(let i=1;i<=TOTAL;i++){const d=document.createElement("div");d.className="ps"+(i<cur?" done":i===cur?" active":"");b.appendChild(d);}
+}
+
+function renderAll(){
+  renderPG("p2",PALETTES.two);renderPG("p3",PALETTES.three);renderPG("p4",PALETTES.four);renderPG("pR",randPs,true);
+  renderOG("dg",DENSITIES,"density",3);renderOG("sg",STYLES,"style",4);renderLG();renderFG();renderCG();
+}
+
+// ── Palettes ──
+function renderPG(id,arr,rnd=false){
+  document.getElementById(id).innerHTML=arr.map(p=>`
+    <div class="pcard${rnd?" rnd":""}${ST.palette&&ST.palette.name===p.name?" sel":""}" onclick='pickP(${JSON.stringify(p)})'>
+      <div class="pswatch">${p.colors.map(c=>`<div style="background:${c}"></div>`).join("")}</div>
+      <div class="pinfo"><div class="pname">${p.name}</div><div class="pmood">${p.mood}</div></div>
+    </div>`).join("");
+}
+function pickP(d){ST.palette=d;renderPG("p2",PALETTES.two);renderPG("p3",PALETTES.three);renderPG("p4",PALETTES.four);renderPG("pR",randPs,true);document.getElementById("b2").disabled=false;}
+function regen(){const was=ST.palette&&ST.palette.isRandom;genAllRP();renderPG("pR",randPs,true);if(was){ST.palette=null;document.getElementById("b2").disabled=true;}}
+
+// ── Options ──
+function renderOG(id,arr,key,step){
+  document.getElementById(id).innerHTML=arr.map(o=>`
+    <div class="ocard${ST[key]===o.id?" sel":""}" onclick="pick('${key}','${o.id}',${step})">
+      <div class="oicon">${o.icon}</div>
+      <div class="otitle">${o.title}</div>
+      <div class="odesc">${o.desc}</div>
+    </div>`).join("");
+}
+function pick(key,val,step){ST[key]=val;renderOG(key==="density"?"dg":"sg",key==="density"?DENSITIES:STYLES,key,step);document.getElementById("b"+step).disabled=false;}
+
+// ── Layouts ──
+function renderLG(){
+  document.getElementById("lg").innerHTML=LAYOUTS.map(l=>`
+    <div class="lcard${ST.layout===l.id?" sel":""}" onclick="pickL('${l.id}')">
+      <div class="lpreview">${l.prev}</div>
+      <div class="otitle">${l.name}</div><div class="odesc">${l.desc}</div>
+    </div>`).join("");
+}
+function pickL(id){ST.layout=id;renderLG();document.getElementById("b5").disabled=false;}
+
+// ── Fonts ──
+function renderFG(){
+  document.getElementById("fg").innerHTML=FONTS.map(f=>`
+    <div class="fcard${ST.font===f.id?" sel":""}" onclick="pickF('${f.id}')">
+      <div class="fsample" style="${f.ss}">Ag</div>
+      <div class="fpair">${f.title}</div><div class="fdesc">${f.desc}</div>
+      <div class="ftag">${f.tag}</div>
+    </div>`).join("");
+}
+function pickF(id){ST.font=id;renderFG();document.getElementById("b6").disabled=false;}
+
+// ── Count ──
+function renderCG(){
+  document.getElementById("cg").innerHTML=COUNTS.map(c=>`
+    <div class="ccard${ST.count===c.n?" sel":""}" onclick="pickC(${c.n})">
+      <div class="cnum">${c.n}</div>
+      <div class="clabel">${c.label}</div>
+      <div class="clabel" style="opacity:.5;margin-top:2px;font-size:10px;">${c.sub}</div>
+    </div>`).join("");
+}
+function pickC(n){ST.count=n;renderCG();document.getElementById("b7").disabled=false;}
+
+// ══ NAV ══
+function next(){
+  if(cur===1)ST.topic=document.getElementById("topicInput").value.trim();
+  document.getElementById("step-"+cur).classList.remove("active");
+  cur++;document.getElementById("step-"+cur).classList.add("active");
+  renderProg();window.scrollTo({top:0,behavior:"smooth"});
+}
+function prev(){
+  document.getElementById("step-"+cur).classList.remove("active");
+  cur--;document.getElementById("step-"+cur).classList.add("active");
+  renderProg();window.scrollTo({top:0,behavior:"smooth"});
+}
+function backToStep7(){
+  document.getElementById("step-preview").classList.remove("active");
+  document.getElementById("step-7").classList.add("active");
+  renderProg();window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// ══════════════════════════════
+// SLIDE PREVIEW
+// ══════════════════════════════
+function showPreview(){
+  document.getElementById("step-7").classList.remove("active");
+  document.getElementById("step-preview").classList.add("active");
+  renderProg();
+  buildSlidePreview();
+  buildMetaRows();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function buildMetaRows(){
+  const p=ST.palette;const pal_colors=p?p.colors:["#5c5cff"];
+  const rows=[
+    {key:"Цвета",     val:p?p.name:"—",        color:p?p.colors[0]:null},
+    {key:"Стиль",     val:getLabel(STYLES,ST.style)},
+    {key:"Плотность", val:getLabel(DENSITIES,ST.density)},
+    {key:"Компоновка",val:getLabel(LAYOUTS,ST.layout,"name")},
+    {key:"Шрифт",     val:getFontLabel()},
+    {key:"Слайдов",   val:ST.count?ST.count+" слайдов":"—"},
+  ];
+  document.getElementById("metaRows").innerHTML=rows.map(r=>`
+    <div class="pmeta-row">
+      ${r.color?`<div class="pmeta-dot" style="background:${r.color}"></div>`:"<div style='width:10px'></div>"}
+      <span class="pmeta-key">${r.key}</span>
+      <span class="pmeta-val">${r.val||"—"}</span>
+    </div>`).join("");
+}
+
+function getLabel(arr,id,key="title"){const o=arr.find(x=>x.id===id);return o?o[key]:"—";}
+function getFontLabel(){const f=FONTS.find(x=>x.id===ST.font);return f?f.title.split(" + ")[0]+" + …":"—";}
+
+function buildSlidePreview(){
+  const canvas=document.getElementById("slideCanvas");
+  const p=ST.palette;
+  if(!p){canvas.innerHTML="<div style='color:#666;display:flex;align-items:center;justify-content:center;height:100%;font-size:13px;'>Выбери палитру</div>";return;}
+
+  const bg   = p.colors[0];
+  const acc  = p.colors[1]||p.colors[0];
+  const txt  = isLight(bg)?"#1a1a2e":"#f0f0f8";
+  const sub  = isLight(bg)?"#4a4a6a":"#9090b8";
+  const card = isLight(bg)?lighten(bg,8):darken(bg,8);
+
+  const fontObj=FONTS.find(x=>x.id===ST.font)||FONTS[0];
+  // Extract a simple CSS font-family from the style string
+  const ffMatch=fontObj.ss.match(/font-family:([^;]+)/);
+  const ff=ffMatch?ffMatch[1].trim():"'Unbounded',sans-serif";
+
+  const topic=ST.topic||"Заголовок презентации";
+  const layout=ST.layout||"centered";
+  const density=ST.density||"balanced";
+
+  let html="";
+  html+=`<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden;font-family:${ff};">`;
+
+  // Accent bar left
+  if(layout!=="fullbleed"){
+    html+=`<div style="position:absolute;left:0;top:0;width:6px;height:100%;background:${acc};"></div>`;
+  }
+
+  if(layout==="centered"){
+    html+=`
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;">
+        <div style="font-size:22px;font-weight:700;color:${txt};text-align:center;margin-bottom:12px;line-height:1.25;">${esc(topic)}</div>
+        <div style="width:48px;height:3px;background:${acc};border-radius:2px;margin-bottom:16px;"></div>
+        ${bulletsMini(density,txt,sub,acc)}
+      </div>`;
+  } else if(layout==="left-heavy"){
+    html+=`
+      <div style="position:absolute;inset:0;display:flex;padding:28px 28px 28px 22px;gap:20px;">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+          <div style="font-size:19px;font-weight:700;color:${txt};line-height:1.3;margin-bottom:10px;">${esc(topic)}</div>
+          <div style="width:36px;height:3px;background:${acc};border-radius:2px;margin-bottom:14px;"></div>
+          ${bulletsMini(density,txt,sub,acc)}
+        </div>
+        <div style="flex:0 0 38%;background:${card};border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:48px;height:48px;border-radius:50%;background:${acc};opacity:.5;"></div>
+        </div>
+      </div>`;
+  } else if(layout==="split"){
+    html+=`
+      <div style="position:absolute;inset:0;display:flex;padding:12px 12px 12px 18px;gap:12px;">
+        <div style="flex:1;background:${card};border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:16px;">
+            <div style="width:42px;height:42px;border-radius:50%;background:${acc};opacity:.6;margin:0 auto 10px;"></div>
+            <div style="font-size:18px;font-weight:700;color:${txt};line-height:1.3;">${esc(topic)}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:10px;">
+          ${bulletsMini(density,txt,sub,acc)}
+        </div>
+      </div>`;
+  } else if(layout==="top-bottom"){
+    html+=`
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;padding:16px 24px 16px 22px;gap:12px;">
+        <div style="background:${card};border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:10px;">
+          <div style="width:5px;height:28px;background:${acc};border-radius:2px;flex-shrink:0;"></div>
+          <div style="font-size:19px;font-weight:700;color:${txt};">${esc(topic)}</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 4px;">
+          ${bulletsMini(density,txt,sub,acc)}
+        </div>
+      </div>`;
+  } else if(layout==="grid"){
+    const cardC=card;
+    html+=`
+      <div style="position:absolute;inset:0;padding:18px 16px 16px 22px;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:18px;font-weight:700;color:${txt};">${esc(topic)}</div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;">
+          ${[acc,card,card,card].map((bg2,i)=>`<div style="background:${bg2};border-radius:8px;display:flex;align-items:center;justify-content:center;opacity:${i===0?1:.8};"><div style="width:20px;height:20px;border-radius:50%;background:${i===0?'rgba(255,255,255,.4)':acc};opacity:.6;"></div></div>`).join("")}
+        </div>
+      </div>`;
+  } else if(layout==="fullbleed"){
+    html+=`
+      <div style="position:absolute;inset:0;background:linear-gradient(160deg,${bg} 0%,${acc}55 100%);"></div>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:28px;">
+        <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;text-shadow:0 2px 12px rgba(0,0,0,.5);">${esc(topic)}</div>
+        <div style="width:40px;height:3px;background:${acc};border-radius:2px;"></div>
+      </div>`;
+  }
+
+  // Slide number mock
+  html+=`<div style="position:absolute;right:14px;bottom:10px;font-size:9px;color:${sub};font-family:'Onest',sans-serif;">01 / ${ST.count||"—"}</div>`;
+  html+="</div>";
+  canvas.innerHTML=html;
+}
+
+function bulletsMini(density,txt,sub,acc){
+  const counts={minimal:2,balanced:3,detailed:4,"data-heavy":5};
+  const n=counts[density]||3;
+  const labels=["Ключевой тезис презентации","Поддерживающий аргумент","Данные и доказательства","Дополнительный контекст","Конкретные детали"];
+  let h="";
+  for(let i=0;i<n;i++){
+    h+=`<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;">
+      <div style="width:5px;height:5px;border-radius:50%;background:${acc};flex-shrink:0;margin-top:5px;"></div>
+      <div style="font-size:11px;color:${i===0?txt:sub};line-height:1.4;">${labels[i]||"Тезис"}</div>
+    </div>`;
+  }
+  return h;
+}
+
+function isLight(hex){const h=hex.replace("#","");const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return(0.299*r+0.587*g+0.114*b)>140;}
+function darken(hex,amt){const h=hex.replace("#","");const r=Math.max(0,parseInt(h.slice(0,2),16)-amt),g=Math.max(0,parseInt(h.slice(2,4),16)-amt),b=Math.max(0,parseInt(h.slice(4,6),16)-amt);return`#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;}
+function lighten(hex,amt){const h=hex.replace("#","");const r=Math.min(255,parseInt(h.slice(0,2),16)+amt),g=Math.min(255,parseInt(h.slice(2,4),16)+amt),b=Math.min(255,parseInt(h.slice(4,6),16)+amt);return`#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+// ══════════════════════════════
+// BUILD PROMPT
+// ══════════════════════════════
+function buildPrompt(){
+  const p=ST.palette;
+  const DM={
+    minimal:     {ru:"минималистично — одна мысль на слайд, максимум пространства",          en:"minimalist — one idea per slide, maximum breathing room"},
+    balanced:    {ru:"сбалансировано — тезисы + визуал, читаемо с 5 метров",                 en:"balanced — short bullets with visuals, readable at 5 meters"},
+    detailed:    {ru:"детально — факты, графики и пояснения с необходимым контекстом",        en:"detailed — facts, charts and explanations with context"},
+    "data-heavy":{ru:"насыщенно — аналитика, таблицы, графики, данные на каждом слайде",     en:"data-heavy — analytics, tables, detailed charts per slide"},
+  };
+  const SM={
+    corporate:{ru:"строгий корпоративный",                                        en:"strict corporate"},
+    startup:  {ru:"стартап — живой, смелый, с нарративом",                       en:"startup — bold, energetic, storytelling-driven"},
+    minimal:  {ru:"ультраминималистичный — типографика и пространство в центре",  en:"ultra-minimalist — typography and space first"},
+    creative: {ru:"творческий нестандартный с неожиданными решениями",            en:"creative unconventional with unexpected choices"},
+    editorial:{ru:"редакционный — как разворот журнала",                          en:"editorial — like a magazine spread"},
+    tech:     {ru:"технологичный data-driven с акцентом на схемы",                en:"tech/data-driven with focus on diagrams"},
+    luxury:   {ru:"люксовый премиальный — изысканно и медленно",                  en:"luxury premium — refined and unhurried"},
+    playful:  {ru:"игривый с иллюстрациями и характером",                         en:"playful illustrative with personality"},
+  };
+  const LM={
+    centered:    {ru:"центрированная — все элементы по центральной оси",           en:"centered — all elements on center axis"},
+    "left-heavy":{ru:"левый акцент — заголовок слева, контент справа",             en:"left-heavy — headline left, content right"},
+    split:       {ru:"50/50 — текст и визуал в равных долях",                      en:"50/50 split — text and visual in equal halves"},
+    "top-bottom":{ru:"горизонтальное деление — заголовок сверху, контент снизу",   en:"top/bottom — headline band top, content below"},
+    grid:        {ru:"сетка — карточки 2×2 или 3×2 на каждом слайде",             en:"grid — 2×2 or 3×2 card arrangement per slide"},
+    fullbleed:   {ru:"полноэкранный фон с наложенным текстом",                     en:"full-bleed background with overlaid text"},
+  };
+  const FM={
+    "playfair-inter":   {ru:"заголовки: Playfair Display Bold, текст: Inter",              en:"headlines: Playfair Display Bold, body: Inter"},
+    "cormorant-source": {ru:"заголовки: Cormorant Garamond Italic 600, текст: Source Sans", en:"headlines: Cormorant Garamond Italic 600, body: Source Sans"},
+    "dm-serif-dm":      {ru:"заголовки: DM Serif Display Italic, текст: DM Sans",           en:"headlines: DM Serif Display Italic, body: DM Sans"},
+    "fraunces-manrope": {ru:"заголовки: Fraunces Italic Bold, текст: Manrope",              en:"headlines: Fraunces Italic Bold, body: Manrope"},
+    "playfair-manrope": {ru:"заголовки: Playfair Display 700, текст: Manrope",              en:"headlines: Playfair Display 700, body: Manrope"},
+    "unbounded-onest":  {ru:"заголовки: Unbounded 800, текст: Onest",                       en:"headlines: Unbounded 800, body: Onest"},
+    "syne-manrope":     {ru:"заголовки: Syne 700, текст: Manrope",                          en:"headlines: Syne 700, body: Manrope"},
+    "space-dm":         {ru:"заголовки: Space Grotesk 600, текст: DM Sans",                 en:"headlines: Space Grotesk 600, body: DM Sans"},
+    "josefin-lato":     {ru:"заголовки: Josefin Sans 600 (caps), текст: Lato",              en:"headlines: Josefin Sans 600 uppercase, body: Lato"},
+    "josefin-light":    {ru:"заголовки: Josefin Sans 300 разряженный, текст: Source Sans",  en:"headlines: Josefin Sans 300 spaced, body: Source Sans"},
+    "montserrat-lato":  {ru:"заголовки: Montserrat 700, текст: Lato",                       en:"headlines: Montserrat 700, body: Lato"},
+    "bebas-inter":      {ru:"заголовки: Bebas Neue (CAPS), текст: Inter",                   en:"headlines: Bebas Neue display caps, body: Inter"},
+    "unbounded-dm":     {ru:"заголовки: Unbounded 600, текст: DM Sans",                     en:"headlines: Unbounded 600, body: DM Sans"},
+    "fraunces-dm":      {ru:"заголовки: Fraunces Italic, текст: DM Sans",                   en:"headlines: Fraunces Italic, body: DM Sans"},
+    "cormorant-manrope":{ru:"заголовки: Cormorant Garamond Italic, текст: Manrope",         en:"headlines: Cormorant Garamond Italic, body: Manrope"},
+    "space-inter":      {ru:"заголовки: Space Grotesk, текст: Inter",                       en:"headlines: Space Grotesk, body: Inter"},
+    "dm-serif-inter":   {ru:"заголовки: DM Serif Display, текст: Inter",                    en:"headlines: DM Serif Display, body: Inter"},
+    "montserrat-source":{ru:"заголовки: Montserrat 600, текст: Source Sans Pro",            en:"headlines: Montserrat 600, body: Source Sans Pro"},
+    "playfair-source":  {ru:"заголовки: Playfair Display 700, текст: Source Sans Pro",      en:"headlines: Playfair Display 700, body: Source Sans Pro"},
+    "syne-source":      {ru:"заголовки: Syne 700, текст: Source Sans Pro",                  en:"headlines: Syne 700, body: Source Sans Pro"},
+  };
+
+  const t=ST.topic;const d=DM[ST.density];const s=SM[ST.style];const l=LM[ST.layout];const f=FM[ST.font];
+  const fo=FONTS.find(x=>x.id===ST.font);
+  const cc=p.colors.join(", ");const cnt=ST.count||7;
+
+  pRu=`Создай профессиональную презентацию${t?` на тему: «${t}»`:""}.
+
+📊 Объём: ${cnt} слайдов (включая титульный и заключительный).
+
+🎨 Цветовая палитра: «${p.name}»
+Цвета: ${cc}
+Первый цвет — основной фон. Остальные — акценты, кнопки, линии, иконки.
+Настроение: ${p.mood}.
+
+📐 Компоновка: ${l.ru}.
+
+📝 Информация: ${d.ru}.
+
+✦ Стиль: ${s.ru}.
+
+🔤 Типографика: ${f.ru}.${fo?` Категория: ${fo.tag}.`:""}
+
+Правила:
+— Иерархия: заголовок → подзаголовок → контент
+— Не более 3 начертаний шрифта во всей презентации
+— Декор и иконки соответствуют стилю
+— Поля — минимум 40px
+— Каждый слайд работает без контекста
+— Не смешивать оттенки сверх палитры`;
+
+  pEn=`Create a professional presentation${t?` on: «${t}»`:""}.
+
+
+📊 Slides: ${cnt} (including title and conclusion).
+
+🎨 Color palette: "${p.name}"
+Colors: ${cc}
+First color is the primary background. Remaining — accents, buttons, lines, icons.
+Mood: ${p.mood}.
+
+📐 Layout: ${l.en}.
+
+📝 Information density: ${d.en}.
+
+✦ Visual style: ${s.en}.
+
+🔤 Typography: ${f.en}.${fo?` Category: ${fo.tag}.`:""}
+
+Rules:
+— Hierarchy: title → subtitle → content
+— Max 3 font weights across the deck
+— Icons and decoration match the style
+— Margins — minimum 40px
+— Each slide is self-contained
+— Don't introduce colors outside the palette`;
+
+  // hide preview step, show result
+  document.getElementById("step-preview").classList.remove("active");
+  const rb=document.getElementById("result-box");rb.style.display="block";
+  document.getElementById("ptext").textContent=pRu;
+  rb.scrollIntoView({behavior:"smooth"});
+}
+
+function switchLang(lang,btn){curLang=lang;document.querySelectorAll(".rtab").forEach(t=>t.classList.remove("active"));btn.classList.add("active");document.getElementById("ptext").textContent=lang==="ru"?pRu:pEn;}
+
+function copyP(){
+  navigator.clipboard.writeText(curLang==="ru"?pRu:pEn).then(()=>{
+    const b=document.getElementById("cpbtn");b.classList.add("cp");b.innerHTML="✓ Скопировано!";
+    setTimeout(()=>{b.classList.remove("cp");b.innerHTML="📋 Скопировать";},2000);
+  });
+}
+
+function resetAll(){
+  cur=1;Object.keys(ST).forEach(k=>ST[k]=k==="topic"?"":null);
+  document.getElementById("topicInput").value="";
+  document.getElementById("result-box").style.display="none";
+  document.querySelectorAll(".pcard,.ocard,.lcard,.fcard,.ccard").forEach(c=>c.classList.remove("sel"));
+  ["b2","b3","b4","b5","b6","b7"].forEach(id=>document.getElementById(id).disabled=true);
+  for(let i=2;i<=7;i++)document.getElementById("step-"+i).classList.remove("active");
+  document.getElementById("step-preview").classList.remove("active");
+  document.getElementById("step-1").classList.add("active");
+  genAllRP();renderPG("pR",randPs,true);
+  renderProg();window.scrollTo({top:0,behavior:"smooth"});
+}
+</script>
+</body>
+</html>
